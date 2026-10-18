@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  role          String    @default("USER")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  idToken               String?   @db.Text
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String
+  value      String    @db.Text
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("verification")
+}
+
+model Service {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  name            String
+  description     String?
+  durationMinutes Int
+  price           Int
+  isActive        Boolean   @default(true)
+  sortOrder       Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  bookings        Booking[]
+
+  @@map("service")
+}
+
+model Staff {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  name      String
+  specialty String?
+  imageUrl  String?
+  isActive  Boolean   @default(true)
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  bookings  Booking[]
+
+  @@map("staff")
+}
+
+model CustomerProfile {
+  id        String   @id @default(cuid())
+  lineId    String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("customer_profile")
+}
+
+enum BookingStatus {
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+model Booking {
+  id              String        @id @default(cuid())
+  bookingCode     String        @unique
+  serviceId       String
+  service         Service       @relation(fields: [serviceId], references: [id])
+  staffId         String
+  staff           Staff         @relation(fields: [staffId], references: [id])
+  customerName    String
+  lineId          String
+  bookingDate     String        @db.VarChar(10)
+  startTime       String        @db.VarChar(5)
+  endTime         String        @db.VarChar(5)
+  startAt         DateTime
+  endAt           DateTime
+  durationMinutes Int
+  price           Int
+  wasAnyStaff     Boolean       @default(false)
+  status          BookingStatus @default(CONFIRMED)
+  cancelledAt     DateTime?
+  cancelReason    String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([bookingDate, staffId, status])
+  @@index([bookingDate, status])
+  @@index([lineId, createdAt])
+  @@index([staffId, startAt, endAt])
+  @@map("booking")
+}
